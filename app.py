@@ -1,6 +1,6 @@
 import asyncio
 import torch
-from pipecat.frames.frames import EndFrame, TextFrame
+from pipecat.frames.frames import EndFrame, TextFrame, AudioRawFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
@@ -40,4 +40,26 @@ class OllamaLLMProcessor(FrameProcessor):
             reply = response.json()["response"]
             print(f"🤖 Assistant: {reply}")
             await self.push_frame(TextFrame(reply))
+        await self.push_frame(frame)
+
+
+class HuggingFaceTTSProcessor(FrameProcessor):
+    def __init__(self):
+        super().__init__()
+        from transformers import pipeline
+        self.pipe = pipeline(
+            "text-to-speech",
+            model="microsoft/speecht5_tts",
+            torch_dtype=torch.float16,
+            device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+        
+    async def process_frame(self, frame):
+        if isinstance(frame, TextFrame):
+            speech = self.pipe(frame.text)
+            audio_frame = AudioRawFrame(
+                audio=speech["audio"].astype(np.float32), 
+                sample_rate=speech["sampling_rate"]
+            )
+            await self.push_frame(audio_frame)
         await self.push_frame(frame)
