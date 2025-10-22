@@ -1,0 +1,8 @@
+/voiceai*
+
+numpy
+torch
+openai-whisper
+transformers
+requests
+pipecat-ai
